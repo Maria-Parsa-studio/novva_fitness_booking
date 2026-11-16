@@ -8,7 +8,8 @@
 <section class="section"><h2>1. Choose Your Session</h2><p class="intro">Select the class or training session you are interested in.</p><div class="classes" id="classes">
 <div class="class-card active" data-name="Personal Training" data-price="45"><b>🏋️ Personal Training</b><span>$45 · 60 min</span></div><div class="class-card" data-name="Strength Training" data-price="20"><b>💪 Strength Class</b><span>$20 · 45 min</span></div><div class="class-card" data-name="Yoga & Mobility" data-price="18"><b>🧘 Yoga & Mobility</b><span>$18 · 50 min</span></div><div class="class-card" data-name="HIIT Workout" data-price="20"><b>⚡ HIIT Workout</b><span>$20 · 40 min</span></div></div>
 <h2 style="margin-top:20px">2. Request a Booking</h2><form id="bookingForm"><label for="customerName">Your Name</label><input id="customerName" autocomplete="name" placeholder="e.g. Alex Morgan" required><label for="customerPhone">Phone Number</label><input id="customerPhone" type="tel" autocomplete="tel" placeholder="e.g. 555 123 4567" required><label for="sessionSelect">Selected Session</label><select id="sessionSelect"><option>Personal Training - $45</option><option>Strength Training - $20</option><option>Yoga & Mobility - $18</option><option>HIIT Workout - $20</option></select><label for="bookingDate">Preferred Date</label><input id="bookingDate" type="date" required><label for="bookingTime">Preferred Time</label><select id="bookingTime"><option>7:00 AM</option><option>8:00 AM</option><option>9:00 AM</option><option>10:00 AM</option><option>11:00 AM</option><option>12:00 PM</option><option>1:00 PM</option><option>2:00 PM</option><option>3:00 PM</option><option>4:00 PM</option><option>5:00 PM</option><option>6:00 PM</option><option>7:00 PM</option></select><button class="btn primary" type="submit">Save Request & Continue to WhatsApp</button></form><div class="success" id="successBox" role="status"></div><p class="note">This form sends a booking request. Your session is not confirmed until the studio contacts you.</p></section>
-<section class="section"><h2>For Studio Owner</h2><div class="owner"><p class="intro">Requests are stored in this browser on this device. Export the list regularly to keep a separate copy.</p><span class="count" id="countBadge">0 requests saved on this device</span><button class="btn secondary" type="button" id="exportBtn">⬇ Download Excel-compatible CSV</button><p class="note">The owner must open this page in the same browser/device used to receive and save requests.</p></div></section><footer class="footer">NOVVA · Simple booking page for fitness businesses</footer></main>
+<section class="section"><h2>For Studio Owner</h2><div class="owner"><p class="intro">Requests are stored in this browser on this device. Export the list regularly to keep a separate copy.</p><span class="count" id="countBadge">0 requests saved on this device</span><button class="btn secondary" type="button" id="exportBtn">⬇ Download Styled Excel (.xlsx)</button><p class="note">The owner must open this page in the same browser/device used to receive and save requests.</p></div></section><footer class="footer">NOVVA · Simple booking page for fitness businesses</footer></main>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script>
 // CUSTOMIZE THESE SETTINGS FOR EACH FITNESS BUSINESS BEFORE PUBLISHING.
 const STUDIO_NAME="Your Fitness Studio";
@@ -20,5 +21,34 @@ function readRequests(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)|
 document.querySelectorAll(".class-card").forEach(card=>card.addEventListener("click",()=>{document.querySelectorAll(".class-card").forEach(x=>x.classList.remove("active"));card.classList.add("active");selectedClass={name:card.dataset.name,price:card.dataset.price};document.getElementById("sessionSelect").value=selectedClass.name+" - $"+selectedClass.price}));
 document.getElementById("sessionSelect").addEventListener("change",e=>{const parts=e.target.value.split(" - $");selectedClass={name:parts[0],price:parts[1]};document.querySelectorAll(".class-card").forEach(card=>card.classList.toggle("active",card.dataset.name===selectedClass.name))});
 document.getElementById("bookingForm").addEventListener("submit",e=>{e.preventDefault();const name=document.getElementById("customerName").value.trim(),phone=document.getElementById("customerPhone").value.trim(),date=dateInput.value,time=document.getElementById("bookingTime").value;if(!name||!phone||!date){alert("Please complete your name, phone number and preferred date.");return}if(date<localToday){alert("Please choose today or a future date.");return}const request={name,phone,session:selectedClass.name,price:selectedClass.price,date,time,createdAt:new Date().toLocaleString()};const requests=readRequests();requests.push(request);try{localStorage.setItem(STORAGE_KEY,JSON.stringify(requests))}catch(err){alert("This browser could not save the request. Please try again or contact the studio.");return}updateCount();const box=document.getElementById("successBox");box.style.display="block";box.textContent="Your request has been saved on this device. WhatsApp will open so you can send the details to the studio.";const message=["New session request - "+STUDIO_NAME,"Name: "+name,"Phone: "+phone,"Session: "+selectedClass.name+" ($"+selectedClass.price+")","Preferred date: "+date,"Preferred time: "+time].join("\n");const waUrl="https://wa.me/"+STUDIO_PHONE+"?text="+encodeURIComponent(message);const w=window.open(waUrl,"_blank");if(!w)window.location.href=waUrl});
-document.getElementById("exportBtn").addEventListener("click",()=>{const requests=readRequests();if(!requests.length){alert("There are no saved requests to export yet.");return}const rows=[["Name","Phone","Session","Price (USD)","Preferred Date","Preferred Time","Created At"]];requests.forEach(r=>rows.push([r.name,r.phone,r.session,r.price,r.date,r.time,r.createdAt]));const csv="\uFEFF"+rows.map(row=>row.map(csvCell).join(",")).join("\r\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="fitness-booking-requests.csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)});updateCount();
+document.getElementById("exportBtn").addEventListener("click",()=>{
+  const requests=readRequests();
+  if(!requests.length){alert("There are no saved requests to export yet.");return}
+  if(typeof XLSX==="undefined"){alert("Excel export could not load. Please check your internet connection and try again.");return}
+  const headers=["Name","Phone","Session","Price (USD)","Preferred Date","Preferred Time","Created At"];
+  const rows=[["FITNESS STUDIO — BOOKING REQUESTS"],["Exported from this device"],[""],headers,...requests.map(r=>[r.name||"",r.phone||"",r.session||"",Number(r.price)||0,r.date||"",r.time||"",r.createdAt||""])];
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws["!merges"]=[{s:{r:0,c:0},e:{r:0,c:6}},{s:{r:1,c:0},e:{r:1,c:6}}];
+  ws["!cols"]=[{wch:24},{wch:19},{wch:25},{wch:15},{wch:19},{wch:18},{wch:25}];
+  ws["!rows"]=[{hpt:30},{hpt:21},{hpt:9},{hpt:25},...requests.map(()=>({hpt:22}))];
+  const endRow=3+requests.length;
+  ws["!autofilter"]={ref:`A4:G${endRow}`};
+  ws["!freeze"]={xSplit:0,ySplit:4,topLeftCell:"A5",activePane:"bottomLeft",state:"frozen"};
+  const border={top:{style:"thin",color:{rgb:"D7E2EA"}},bottom:{style:"thin",color:{rgb:"D7E2EA"}},left:{style:"thin",color:{rgb:"D7E2EA"}},right:{style:"thin",color:{rgb:"D7E2EA"}}};
+  for(let c=0;c<7;c++){
+    const title=XLSX.utils.encode_cell({r:0,c}),subtitle=XLSX.utils.encode_cell({r:1,c}),head=XLSX.utils.encode_cell({r:3,c});
+    if(ws[title])ws[title].s={font:{bold:true,color:{rgb:"FFFFFF"},sz:16},fill:{fgColor:{rgb:"172554"}},alignment:{vertical:"center",horizontal:"left"}};
+    if(ws[subtitle])ws[subtitle].s={font:{italic:true,color:{rgb:"475569"},sz:10},fill:{fgColor:{rgb:"EAF2F8"}},alignment:{vertical:"center"}};
+    if(ws[head])ws[head].s={font:{bold:true,color:{rgb:"FFFFFF"},sz:11},fill:{fgColor:{rgb:"166534"}},alignment:{horizontal:"center",vertical:"center",wrapText:true},border};
+  }
+  for(let r=4;r<=endRow;r++)for(let c=0;c<7;c++){
+    const ref=XLSX.utils.encode_cell({r,c});if(!ws[ref])continue;
+    ws[ref].s={font:{color:{rgb:"172033"},sz:10},fill:{fgColor:{rgb:r%2===0?"F0FDF4":"FFFFFF"}},alignment:{vertical:"center",horizontal:c===3?"right":"left"},border};
+    if(c===3)ws[ref].z='"$"#,##0.00';
+  }
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Fitness Requests");
+  wb.Props={Title:"Fitness Booking Requests",Subject:"NOVVA booking request export",Author:"NOVVA"};
+  XLSX.writeFile(wb,"NOVVA-Fitness-Booking-Requests.xlsx");
+});
+updateCount();
 </script></body></html>
